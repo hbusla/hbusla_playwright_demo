@@ -1,150 +1,31 @@
-name: CI
+name: Playwright CI
 
 on:
-  workflow_dispatch:
-  workflow_call:
-    inputs:
-      event_name:
-        description: 'GitHub event name'
-        type: string
-        required: true
-
-env:
-  ALLURE_ENDPOINT: ${{ vars.ALLURE_ENDPOINT }}
-  ALLURE_EE_TOKEN: ${{ secrets.ALLURE_EE_TOKEN }}
-  ALLURE_PROJECT_ID: ${{ vars.ALLURE_PROJECT_ID }}
-  ALLURE_JOB_RUN_ID: ${{ github.event.inputs.ALLURE_JOB_RUN_ID }}
-  ALLURE_RESULTS: 'allure-results'
+  pull_request:
+    branches:
+      - main
 
 jobs:
-  setup:
-    permissions:
-      id-token: write
-      checks: write
-      pull-requests: write
-      contents: write
-
-    runs-on: small
-
-    outputs:
-      branch_name: ${{ env.branch_name }}
-      normalized_branch_name: ${{ env.normalized_branch_name}}
-
-    steps:
-      - name: Get branch name
-        id: branch-name
-        uses: tj-actions/branch-names@v8
-
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.APP_GITHUB_TOKEN }}
-
-      - name: Generate branch name
-        run: |
-          branch=${{ steps.branch-name.outputs.base_ref_branch }}
-          echo "branch_name=${branch}" >> $GITHUB_ENV
-          echo "normalized_branch_name=${branch//\//-}" >> $GITHUB_ENV
-
-      - name: CI Restore
-        uses: ./.github/ci-restore-install
-        with:
-          npmrc: ${{ secrets.NPMRC }}
-
   playwright:
     name: playwright's tests
     runs-on: large
-    needs: [setup]
+
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.APP_GITHUB_TOKEN }}
 
-      - name: CI Restore
-        uses: ./.github/ci-restore
-
-      - name: Restore playwright browsers
-        id: playwright-cache-restore
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-cache-${{ hashFiles('playwright/package.json') }}
+      - name: Install dependencies
+        run: npm install
 
       - name: Install Playwright and dependencies
         run: npx playwright install --with-deps chromium webkit
-        if: steps.playwright-cache-restore.outputs.cache-hit != 'true'
-
-      - name: Install only Playwright dependencies
-        run: npx playwright install-deps chromium webkit
-        if: steps.playwright-cache-restore.outputs.cache-hit == 'true'
-
-      - name: Install and configure allurectl
-        uses: allure-framework/setup-allurectl@v1
-        with:
-          allure-endpoint: ${{ env.ALLURE_ENDPOINT }}
-          allure-token: ${{ env.ALLURE_EE_TOKEN }}
-          allure-project-id: ${{ env.ALLURE_PROJECT_ID }}
-
-      - name: Build cache
-        id: build-cache-restore
-        uses: actions/cache@v4
-        with:
-          path: |
-            .cache/webpack
-            .cache/babel-loader-client
-            .cache/babel-loader-server
-          key: build-dev-cache-cdn-${{ hashFiles('yarn.lock') }}
-
-      - name: Copy local.default.json to local.json
-        run: cp jsfiller3/config/local.default.json jsfiller3/config/local.json
 
       - name: Run Playwright tests
-        run: |
-          cd ./playwright && allurectl watch -- yarn test
+        run: npx playwright test --reporter=github
 
-      - name: Get Allure report URL
-        if: always() && job.status != 'cancelled'
-        run: |
-          export $(allurectl job-run env)
-          echo "ALLURE_JOB_RUN_URL=$ALLURE_JOB_RUN_URL" >> $GITHUB_ENV
-          echo "Allure Report: $ALLURE_JOB_RUN_URL" >> $GITHUB_STEP_SUMMARY
-
-      - uses: actions/upload-artifact@v4
-        if: always() && job.status != 'cancelled'
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
         with:
           name: playwright-report
-          path: playwright/playwright-report/
-          retention-days: 14
-
-      - uses: daun/playwright-report-summary@v3
-        id: playwright-report-summary
-        if: always() && job.status != 'cancelled'
-        with:
-          github-token: ${{ secrets.APP_GITHUB_TOKEN }}
-          comment-title: 'Playwright e2e tests (l: `guest` p: `qGRq-zeok-4Arf`)'
-          report-url: ${{ env.ALLURE_JOB_RUN_URL }}
-          report-tag: 'playwright-e2e'
-          report-file: playwright/playwright-report/test_result_json.json
-
-      - name: Prepare report info
-        if: always() && job.status != 'cancelled' && inputs.event_name == 'push'
-        id: prepare-report-info
-        run: |
-          filePath="playwright/playwright-report/test_result_json.json"
-          PASSED=$(jq '.stats.expected // 0' $filePath)
-          FAILED=$(jq '.stats.unexpected // 0' $filePath)
-          SKIPPED=$(jq '.stats.skipped // 0' $filePath)
-          FLAKY=$(jq '.stats.flaky // 0' $filePath)
-          TOTAL=$((PASSED + FAILED + SKIPPED + FLAKY))
-          durationLimit=$(jq '.config.reportSlowTests.threshold' $filePath)
-          SLOW_COUNT=$(jq "[.suites[].specs[].tests[].results[0].duration | select(. > $durationLimit)] | length" $filePath)
-          DURATION=$(jq '.stats.duration // 0' $filePath)
-          echo "PASSED=$PASSED($(awk -v d="$PASSED" -v t="$TOTAL" 'BEGIN{printf "%.2f\n",d/t*100}')%)" >> $GITHUB_OUTPUT
-          echo "FAILED=$FAILED($(awk -v d="$FAILED" -v t="$TOTAL" 'BEGIN{printf "%.2f\n",d/t*100}')%)" >> $GITHUB_OUTPUT
-          echo "SKIPPED=$SKIPPED($(awk -v d="$SKIPPED" -v t="$TOTAL" 'BEGIN{printf "%.2f\n",d/t*100}')%)" >> $GITHUB_OUTPUT
-          echo "FLAKY=$FLAKY($(awk -v d="$FLAKY" -v t="$TOTAL" 'BEGIN{printf "%.2f\n",d/t*100}')%)" >> $GITHUB_OUTPUT
-          echo "TESTS_COUNT=$TOTAL" >> $GITHUB_OUTPUT
-          echo "SLOW_COUNT=$SLOW_COUNT($(awk -v d="$SLOW_COUNT" -v t="$TOTAL" 'BEGIN{printf "%.2f\n",d/t*100}')%)" >> $GITHUB_OUTPUT
-          echo "DURATION=$(awk -v d="$DURATION" 'BEGIN{printf "%.2f\n",d/60000}')" >> $GITHUB_OUTPUT
-          echo "HEAD_COMMIT=$(git log -1 --pretty=%s | head -n 1)" >> $GITHUB_OUTPUT
+          path: playwright-report/
+          retention-days: 3
