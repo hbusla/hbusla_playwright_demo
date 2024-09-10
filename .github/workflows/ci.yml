@@ -8,7 +8,7 @@ on:
 jobs:
   playwright:
     name: playwright's tests
-    runs-on: large
+    runs-on: small
 
     steps:
       - name: Checkout code
