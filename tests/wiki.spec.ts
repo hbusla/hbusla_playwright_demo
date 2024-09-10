@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test('Wikipedia test', async ({ page }) => {
+test('Wiki test', async ({ page }) => {
   await page.goto('https://en.wikipedia.org/');
 
   await test.step('Fill the searchfield', async () => {
