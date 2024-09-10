@@ -8,7 +8,7 @@ on:
 jobs:
   playwright:
     name: playwright's tests
-    runs-on: small
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
