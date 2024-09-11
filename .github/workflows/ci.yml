@@ -37,6 +37,9 @@ jobs:
           echo "Displaying directory tree:"
           tree playwright-report || echo "tree command not available."
 
+      - name: Display .last-run.json content
+        run: cat playwright-report/.last-run.json
+
       - name: Check directory permissions
         run: |
           echo "Checking permissions for current directory:"
