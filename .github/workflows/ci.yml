@@ -14,7 +14,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install dependencies
-        run: yarn install
+        run: npm install
+
+      - name: Run Playwright tests
+        run: npx playwright test
 
       - name: Install Playwright browsers
         run: yarn playwright install --with-deps
@@ -25,6 +28,17 @@ jobs:
       - name: Run Playwright tests
         run: yarn playwright test --reporter=json --output=playwright-report
 
+      - name: Verify test result JSON file
+        run: |
+          filePath="playwright-report/test_result_json.json"
+          if [ -f "$filePath" ]; then
+            echo "Test result JSON file found."
+            ls -l $filePath
+          else
+            echo "Test result JSON file not found!"
+            exit 1
+          fi
+          
       - name: Post Playwright test summary
         run: |
           filePath="/home/runner/work/hbusla_playwright_demo/hbusla_playwright_demo/playwright-report/test_result_json.json"
@@ -51,3 +65,28 @@ jobs:
           echo "**stats**  $TOTAL tests across $SUITES suites"
           echo "**duration**  $DURATION_MIN minutes, $DURATION_SEC seconds"
           echo "**commit**  $COMMIT"
+
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run Playwright tests
+        run: npx playwright test
+
+      - name: Verify test result JSON file
+        run: |
+          filePath="playwright-report/test_result_json.json"
+          if [ -f "$filePath" ]; then
+            echo "Test result JSON file found."
+            ls -l $filePath
+          else
+            echo "Test result JSON file not found!"
+            exit 1
+          fi
