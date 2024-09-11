@@ -6,8 +6,6 @@ on:
       - main
 
 jobs:
-  playwright:
-    name: playwright's tests
   test:
     runs-on: ubuntu-latest
 
