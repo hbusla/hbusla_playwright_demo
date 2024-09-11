@@ -72,10 +72,6 @@ jobs:
       - name: Post Playwright test summary
         run: |
           filePath="playwright-report/test_result_json.json"
-          if [ ! -f "$filePath" ]; then
-            echo "Test result file not found!"
-            exit 1
-          fi
           PASSED=$(jq '.stats.expected // 0' $filePath)
           FLAKY=$(jq '.stats.flaky // 0' $filePath)
           SKIPPED=$(jq '.stats.skipped // 0' $filePath)
