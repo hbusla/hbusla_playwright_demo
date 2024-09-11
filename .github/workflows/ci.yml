@@ -29,3 +29,63 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 3
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: yarn install
+
+      - name: Install Playwright browsers
+        run: yarn playwright install --with-deps
+
+      - name: Run Playwright tests
+        run: yarn test --reporter=json --output=playwright-report
+
+      - name: Post Playwright test summary
+        run: |
+          filePath="playwright-report/test_result_json.json"
+          PASSED=$(jq '.stats.expected // 0' $filePath)
+          FLAKY=$(jq '.stats.flaky // 0' $filePath)
+          SKIPPED=$(jq '.stats.skipped // 0' $filePath)
+          TOTAL=$((PASSED + FLAKY + SKIPPED))
+          SUITES=$(jq '.stats.suites // 0' $filePath)
+          DURATION=$(jq '.stats.duration // 0' $filePath)
+          DURATION_MIN=$((DURATION / 60000))
+          DURATION_SEC=$(((DURATION % 60000) / 1000))
+          COMMIT=$(git rev-parse --short HEAD)
+          
+          echo "**Playwright e2e tests (l: guest p: qGRq-zeok-4Arf)**"
+          echo "**passed**  $PASSED passed"
+          echo "**flaky**  $FLAKY flaky"
+          echo "**skipped**  $SKIPPED skipped"
+          echo "### Details"
+          echo "**report**  [Open report](playwright-report/index.html) ↗︎"
+          echo "**stats**  $TOTAL tests across $SUITES suites"
+          echo "**duration**  $DURATION_MIN minutes, $DURATION_SEC seconds"
+          echo "**commit**  $COMMIT"
+
+      - name: Prepare report info
+        run: |
+          filePath="playwright-report/test_result_json.json"
+          PASSED=$(jq '.stats.expected // 0' $filePath)
+          FAILED=$(jq '.stats.unexpected // 0' $filePath)
+          SKIPPED=$(jq '.stats.skipped // 0' $filePath)
+          FLAKY=$(jq '.stats.flaky // 0' $filePath)
+          TOTAL=$((PASSED + FAILED + SKIPPED + FLAKY))
+          DURATION=$(jq '.stats.duration // 0' $filePath)
+          DURATION_MIN=$((DURATION / 60000))
+          DURATION_SEC=$(((DURATION % 60000) / 1000))
+
+          echo "Test Results:"
+          echo "PASSED: $PASSED"
+          echo "FAILED: $FAILED"
+          echo "SKIPPED: $SKIPPED"
+          echo "FLAKY: $FLAKY"
+          echo "TOTAL: $TOTAL"
+          echo "DURATION: $DURATION_MIN minutes, $DURATION_SEC seconds"
