@@ -38,6 +38,16 @@ jobs:
           echo "Listing files in playwright-report directory:"
           ls -al playwright-report || echo "playwright-report directory does not exist."
 
+      - name: Display directory tree
+        run: |
+          echo "Displaying directory tree:"
+          tree -L 2 || echo "tree command not available."
+
+      - name: Find test result JSON file
+        run: |
+          echo "Finding test result JSON file:"
+          find playwright-report -name "test_result_json.json"
+
       - name: Check directory permissions
         run: |
           echo "Checking permissions for current directory:"
