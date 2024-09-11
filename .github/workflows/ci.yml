@@ -23,7 +23,8 @@ jobs:
         run: mkdir -p playwright-report
 
       - name: Run Playwright tests
-        run: yarn playwright test --reporter=json --output=playwright-report
+        run: yarn playwright test --reporter=json --output=playwright-report/test_result_json.json
+
 
       - name: List files in the current directory
         run: |
