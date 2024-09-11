@@ -1,38 +1,30 @@
-name: Playwright CI
-
-on:
-  pull_request:
-    branches:
-      - main
-
 jobs:
-  playwright:
-    name: playwright's tests
-    runs-on: small
+  test:
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Install dependencies
-        run: npm install
+        run: yarn install
 
-      - name: Install Playwright and dependencies
-        run: npx playwright install --with-deps chromium webkit
+      - name: Install Playwright browsers
+        run: yarn playwright install --with-deps
+
+      - name: Create report directory
+        run: mkdir -p playwright-report
 
       - name: Run Playwright tests
-        run: npx playwright test --reporter=github
-
-      - name: Upload Playwright report
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-report
-          path: playwright-report/
-          retention-days: 3
+        run: yarn playwright test --reporter=json --output=playwright-report
 
       - name: Post Playwright test summary
         run: |
           filePath="playwright-report/test_result_json.json"
+          if [ ! -f "$filePath" ]; then
+            echo "Test result file not found!"
+            exit 1
+          fi
           PASSED=$(jq '.stats.expected // 0' $filePath)
           FLAKY=$(jq '.stats.flaky // 0' $filePath)
           SKIPPED=$(jq '.stats.skipped // 0' $filePath)
@@ -52,23 +44,3 @@ jobs:
           echo "**stats**  $TOTAL tests across $SUITES suites"
           echo "**duration**  $DURATION_MIN minutes, $DURATION_SEC seconds"
           echo "**commit**  $COMMIT"
-
-      - name: Prepare report info
-        run: |
-          filePath="playwright-report/test_result_json.json"
-          PASSED=$(jq '.stats.expected // 0' $filePath)
-          FAILED=$(jq '.stats.unexpected // 0' $filePath)
-          SKIPPED=$(jq '.stats.skipped // 0' $filePath)
-          FLAKY=$(jq '.stats.flaky // 0' $filePath)
-          TOTAL=$((PASSED + FAILED + SKIPPED + FLAKY))
-          DURATION=$(jq '.stats.duration // 0' $filePath)
-          DURATION_MIN=$((DURATION / 60000))
-          DURATION_SEC=$(((DURATION % 60000) / 1000))
-
-          echo "Test Results:"
-          echo "PASSED: $PASSED"
-          echo "FAILED: $FAILED"
-          echo "SKIPPED: $SKIPPED"
-          echo "FLAKY: $FLAKY"
-          echo "TOTAL: $TOTAL"
-          echo "DURATION: $DURATION_MIN minutes, $DURATION_SEC seconds"
