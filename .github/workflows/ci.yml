@@ -23,45 +23,54 @@ jobs:
         run: mkdir -p playwright-report
 
       - name: Run Playwright tests
-        run: yarn playwright test --reporter=json --output=playwright-report/test_result_json.json
-
-      - name: Display directory tree after running tests
-        run: |
-          echo "Displaying directory tree after running tests:"
-          tree -L 2 || echo "tree command not available."
+        run: yarn playwright test --reporter=json --output=playwright-report
 
       - name: List files in the current directory
         run: |
           echo "Listing files in the current directory:"
           ls -al
 
-      - name: List files in playwright-report directory
+      - name: List contents of playwright-report directory
         run: |
-          echo "Listing files in playwright-report directory:"
-          ls -al playwright-report || echo "playwright-report directory does not exist."
-
-      - name: Display directory tree
-        run: |
+          echo "Listing contents of playwright-report directory:"
+          ls -al playwright-report
           echo "Displaying directory tree:"
-          tree -L 2 || echo "tree command not available."
-
-      - name: Find test result JSON file
-        run: |
-          echo "Finding test result JSON file:"
-          find playwright-report -name "test_result_json.json"
+          tree playwright-report || echo "tree command not available."
 
       - name: Check directory permissions
         run: |
           echo "Checking permissions for current directory:"
           ls -ld .
           echo "Checking permissions for playwright-report directory:"
-          ls -ld playwright-report || echo "playwright-report directory does not exist."
+          ls -ld playwright-report
+
+      - name: Verify test result JSON file
+        run: |
+          filePath="playwright-report/test_result_json.json"
+          echo "Checking file at path: $filePath"
+          if [ -d "$filePath" ]; then
+            echo "Error: $filePath is a directory, not a file!"
+            exit 1
+          elif [ ! -f "$filePath" ]; then
+            echo "Test result file not found!"
+            exit 1
+          fi
+
+          echo "File content:"
+          cat $filePath
 
       - name: Post Playwright test summary
         run: |
           filePath="playwright-report/test_result_json.json"
-          echo "File content:"
-          cat $filePath
+          echo "Processing JSON file with jq:"
+          if [ -d "$filePath" ]; then
+            echo "Error: $filePath is a directory, not a file!"
+            exit 1
+          elif [ ! -f "$filePath" ]; then
+            echo "Test result file not found!"
+            exit 1
+          fi
+
           PASSED=$(jq '.stats.expected // 0' $filePath)
           FLAKY=$(jq '.stats.flaky // 0' $filePath)
           SKIPPED=$(jq '.stats.skipped // 0' $filePath)
