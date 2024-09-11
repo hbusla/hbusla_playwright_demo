@@ -25,8 +25,10 @@ jobs:
       - name: Run Playwright tests
         run: yarn playwright test --reporter=json --output=playwright-report/test_result_json.json
 
-      - name: Print current working directory
-        run: pwd
+      - name: Display directory tree after running tests
+        run: |
+          echo "Displaying directory tree after running tests:"
+          tree -L 2 || echo "tree command not available."
 
       - name: List files in the current directory
         run: |
