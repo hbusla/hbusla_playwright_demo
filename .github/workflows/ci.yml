@@ -18,7 +18,7 @@ jobs:
         run: npm install
 
       - name: Install Playwright and dependencies
-        run: npx playwright install --with-deps chromium webkit
+        run: npx playwright install --with-deps
 
       - name: Run Playwright tests
         run: npx playwright test --reporter=github
