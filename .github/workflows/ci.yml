@@ -57,18 +57,6 @@ jobs:
           echo "Checking permissions for playwright-report directory:"
           ls -ld playwright-report || echo "playwright-report directory does not exist."
 
-      - name: Verify test result JSON file
-        run: |
-          filePath="playwright-report/test_result_json.json"
-          echo "Checking file at path: $filePath"
-          if [ -f "$filePath" ]; then
-            echo "Test result JSON file found."
-            ls -l $filePath
-          else
-            echo "Test result JSON file not found!"
-            exit 1
-          fi
-
       - name: Post Playwright test summary
         run: |
           filePath="playwright-report/test_result_json.json"
