@@ -25,7 +25,7 @@ jobs:
           ls -l results.json
 
       - name: Upload test result JSON file
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: test-results-json
           path: results.json
