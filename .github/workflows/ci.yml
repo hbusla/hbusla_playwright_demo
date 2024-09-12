@@ -19,77 +19,19 @@ jobs:
       - name: Install Playwright browsers
         run: yarn playwright install --with-deps
 
-      - name: Create report directory
-        run: mkdir -p playwright-report
-
-      - name: Run Playwright tests
-        run: yarn playwright test --reporter=json --output=playwright-report
-
-      - name: List files in the current directory
+      - name: Run Playwright tests with JSON reporter
         run: |
-          echo "Listing files in the current directory:"
-          ls -al
+          PLAYWRIGHT_JSON_OUTPUT_NAME=results.json npx playwright test --reporter=json
+          ls -l results.json
 
-      - name: List contents of playwright-report directory
-        run: |
-          echo "Listing contents of playwright-report directory:"
-          ls -al playwright-report
-          echo "Displaying directory tree:"
-          tree playwright-report || echo "tree command not available."
-
-      - name: Display .last-run.json content
-        run: cat playwright-report/.last-run.json
-
-      - name: Check directory permissions
-        run: |
-          echo "Checking permissions for current directory:"
-          ls -ld .
-          echo "Checking permissions for playwright-report directory:"
-          ls -ld playwright-report
-
-      - name: Verify test result JSON file
-        run: |
-          filePath="playwright-report/test_result_json.json"
-          echo "Checking file at path: $filePath"
-          if [ -d "$filePath" ]; then
-            echo "Error: $filePath is a directory, not a file!"
-            exit 1
-          elif [ ! -f "$filePath" ]; then
-            echo "Test result file not found!"
-            exit 1
-          fi
-
-          echo "File content:"
-          cat $filePath
+      - name: Upload test result JSON file
+        uses: actions/upload-artifact@v2
+        with:
+          name: test-results-json
+          path: results.json
 
       - name: Post Playwright test summary
-        run: |
-          filePath="playwright-report/test_result_json.json"
-          echo "Processing JSON file with jq:"
-          if [ -d "$filePath" ]; then
-            echo "Error: $filePath is a directory, not a file!"
-            exit 1
-          elif [ ! -f "$filePath" ]; then
-            echo "Test result file not found!"
-            exit 1
-          fi
-
-          PASSED=$(jq '.stats.expected // 0' $filePath)
-          FLAKY=$(jq '.stats.flaky // 0' $filePath)
-          SKIPPED=$(jq '.stats.skipped // 0' $filePath)
-          TOTAL=$((PASSED + FLAKY + SKIPPED))
-          SUITES=$(jq '.stats.suites // 0' $filePath)
-          DURATION=$(jq '.stats.duration // 0' $filePath)
-          DURATION_MIN=$((DURATION / 60000))
-          DURATION_SEC=$(((DURATION % 60000) / 1000))
-          COMMIT=$(git rev-parse --short HEAD)
-          
-          echo "**Playwright e2e tests (l: guest p: qGRq-zeok-4Arf)**"
-          echo "**passed**  $PASSED passed"
-          echo "**flaky**  $FLAKY flaky"
-          echo "**skipped**  $SKIPPED skipped"
-          echo "### Details"
-          echo "**report**  [Open report](playwright-report/index.html) ↗︎"
-          echo "**stats**  $TOTAL tests across $SUITES suites"
-          echo "**duration**  $DURATION_MIN minutes, $DURATION_SEC seconds"
-          echo "**commit**  $COMMIT"
+        uses: daun/playwright-report-summary@v3
+        if: always() # Отправить комментарий в любом случае
+        with:
+          report-file: 'results.json'
