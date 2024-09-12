@@ -40,7 +40,7 @@ jobs:
       - name: Prepare report info
         if: always()
         run: |
-          filePath="playwright/playwright-report/results.json"
+          filePath="results.json"
           PASSED=$(jq '.stats.expected // 0' $filePath)
           FAILED=$(jq '.stats.unexpected // 0' $filePath)
           SKIPPED=$(jq '.stats.skipped // 0' $filePath)
