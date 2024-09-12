@@ -32,6 +32,7 @@ jobs:
 
       - name: Post Playwright test summary
         uses: daun/playwright-report-summary@v3
-        if: always() # Отправить комментарий в любом случае
+        if: always()
         with:
           report-file: 'results.json'
+          github-token: ${{ secrets.PAT_TOKEN }}
