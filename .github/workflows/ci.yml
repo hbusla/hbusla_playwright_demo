@@ -20,9 +20,7 @@ jobs:
         run: yarn playwright install --with-deps
 
       - name: Run Playwright tests with JSON reporter
-        run: |
-          PLAYWRIGHT_JSON_OUTPUT_NAME=results.json npx playwright test --reporter=json
-          ls -l results.json
+        run: PLAYWRIGHT_JSON_OUTPUT_NAME=results.json npx playwright test --reporter=json
 
       - name: Upload test result JSON file
         uses: actions/upload-artifact@v3
