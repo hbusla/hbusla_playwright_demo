@@ -6,8 +6,6 @@ on:
       - main
 
 jobs:
-  playwright:
-    name: playwright's tests
   test:
     runs-on: ubuntu-latest
 
@@ -21,35 +19,18 @@ jobs:
       - name: Install Playwright browsers
         run: yarn playwright install --with-deps
 
-      - name: Create report directory
-        run: mkdir -p playwright-report
+      - name: Run Playwright tests with JSON reporter
+        run: PLAYWRIGHT_JSON_OUTPUT_NAME=results.json npx playwright test --reporter=json
 
-      - name: Run Playwright tests
-        run: yarn playwright test --reporter=json --output=playwright-report
+      - name: Upload test result JSON file
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results-json
+          path: results.json
 
       - name: Post Playwright test summary
-        run: |
-          filePath="playwright-report/test_result_json.json"
-          if [ ! -f "$filePath" ]; then
-            echo "Test result file not found!"
-            exit 1
-          fi
-          PASSED=$(jq '.stats.expected // 0' $filePath)
-          FLAKY=$(jq '.stats.flaky // 0' $filePath)
-          SKIPPED=$(jq '.stats.skipped // 0' $filePath)
-          TOTAL=$((PASSED + FLAKY + SKIPPED))
-          SUITES=$(jq '.stats.suites // 0' $filePath)
-          DURATION=$(jq '.stats.duration // 0' $filePath)
-          DURATION_MIN=$((DURATION / 60000))
-          DURATION_SEC=$(((DURATION % 60000) / 1000))
-          COMMIT=$(git rev-parse --short HEAD)
-          
-          echo "**Playwright e2e tests (l: guest p: qGRq-zeok-4Arf)**"
-          echo "**passed**  $PASSED passed"
-          echo "**flaky**  $FLAKY flaky"
-          echo "**skipped**  $SKIPPED skipped"
-          echo "### Details"
-          echo "**report**  [Open report](playwright-report/index.html) ↗︎"
-          echo "**stats**  $TOTAL tests across $SUITES suites"
-          echo "**duration**  $DURATION_MIN minutes, $DURATION_SEC seconds"
-          echo "**commit**  $COMMIT"
+        uses: daun/playwright-report-summary@v3
+        if: always()
+        with:
+          report-file: 'results.json'
+          github-token: ${{ secrets.PAT_TOKEN }}
