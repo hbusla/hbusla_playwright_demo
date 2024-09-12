@@ -36,3 +36,24 @@ jobs:
         with:
           report-file: 'results.json'
           github-token: ${{ secrets.PAT_TOKEN }}
+
+      - name: Prepare report info
+        if: always()
+        run: |
+          filePath="playwright/playwright-report/results.json"
+          PASSED=$(jq '.stats.expected // 0' $filePath)
+          FAILED=$(jq '.stats.unexpected // 0' $filePath)
+          SKIPPED=$(jq '.stats.skipped // 0' $filePath)
+          FLAKY=$(jq '.stats.flaky // 0' $filePath)
+          TOTAL=$((PASSED + FAILED + SKIPPED + FLAKY))
+          durationLimit=$(jq '.config.reportSlowTests.threshold' $filePath)
+          SLOW_COUNT=$(jq "[.suites[].specs[].tests[].results[0].duration | select(. > $durationLimit)] | length" $filePath)
+          DURATION=$(jq '.stats.duration // 0' $filePath)
+          echo "PASSED=$PASSED($(awk -v d="$PASSED" -v t="$TOTAL" 'BEGIN{printf "%.2f\n",d/t*100}')%)" >> $GITHUB_OUTPUT
+          echo "FAILED=$FAILED($(awk -v d="$FAILED" -v t="$TOTAL" 'BEGIN{printf "%.2f\n",d/t*100}')%)" >> $GITHUB_OUTPUT
+          echo "SKIPPED=$SKIPPED($(awk -v d="$SKIPPED" -v t="$TOTAL" 'BEGIN{printf "%.2f\n",d/t*100}')%)" >> $GITHUB_OUTPUT
+          echo "FLAKY=$FLAKY($(awk -v d="$FLAKY" -v t="$TOTAL" 'BEGIN{printf "%.2f\n",d/t*100}')%)" >> $GITHUB_OUTPUT
+          echo "TESTS_COUNT=$TOTAL" >> $GITHUB_OUTPUT
+          echo "SLOW_COUNT=$SLOW_COUNT($(awk -v d="$SLOW_COUNT" -v t="$TOTAL" 'BEGIN{printf "%.2f\n",d/t*100}')%)" >> $GITHUB_OUTPUT
+          echo "DURATION=$(awk -v d="$DURATION" 'BEGIN{printf "%.2f\n",d/60000}')" >> $GITHUB_OUTPUT
+          echo "HEAD_COMMIT=$(git log -1 --pretty=%s | head -n 1)" >> $GITHUB_OUTPUT
